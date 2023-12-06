@@ -29,5 +29,16 @@ fn main() {
         }
         product *= number_of_winning_times;
     }
-    println!("{product}");
+    let combined_time = numbers.captures(lines[0].as_str().replace(" ", "").as_str()).unwrap()[0].parse::<usize>().unwrap();
+    let combined_distance = numbers.captures(lines[1].as_str().replace(" ", "").as_str()).unwrap()[0].parse::<usize>().unwrap();
+    let mut number_of_winning_times = 0;
+    for time_accelerating in 0..combined_time {
+        let speed = time_accelerating;
+        let time_remaining = combined_time - time_accelerating;
+        let distance = speed * time_remaining;
+        if distance > combined_distance {
+            number_of_winning_times += 1;
+        }
+    }
+    println!("{product}, {combined_time} -> {combined_distance} => {number_of_winning_times}");
 }
