@@ -63,7 +63,7 @@ impl Display for Card {
                 Card::CK => "K",
                 Card::CA => "A",
             }
-        );
+        ).expect("Failed to write card");
         Ok(())
     }
 }
@@ -210,7 +210,7 @@ impl Display for CardCollection {
             let card = &entry.card;
             let count = &entry.count;
             for _ in 0..*count {
-                write!(f, "{},", *card);
+                write!(f, "{},", *card).expect("Failed to write CardCollection");
             }
         });
         Ok(())
@@ -219,7 +219,7 @@ impl Display for CardCollection {
 
 impl Display for Hand {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Cards: {:?} Bid: {:0>3}", self.card_vector, self.bid);
+        write!(f, "Cards: {:?} Bid: {:0>3}", self.card_vector, self.bid).expect("Failed to write Hand");
         Ok(())
     }
 }
