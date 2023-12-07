@@ -7,19 +7,19 @@ use std::ops::Index;
 
 #[derive(Ord, Eq, PartialEq, PartialOrd, Debug, Copy, Clone)]
 enum Card {
-    CJ = 1,
-    C2 = 2,
-    C3 = 3,
-    C4 = 4,
-    C5 = 5,
-    C6 = 6,
-    C7 = 7,
-    C8 = 8,
-    C9 = 9,
-    CT = 11,
-    CQ = 12,
-    CK = 13,
-    CA = 14,
+    C2,
+    C3,
+    C4,
+    C5,
+    C6,
+    C7,
+    C8,
+    C9,
+    CT,
+    CJ,
+    CQ,
+    CK,
+    CA,
 }
 
 impl Card {
@@ -134,12 +134,7 @@ impl CardEntry {
 
     fn from(cards: &Vec<Card>) -> Vec<CardEntry> {
         let mut result: Vec<CardEntry> = Vec::new();
-        let mut joker_count = 0;
         for card in cards {
-            if *card == Card::CJ {
-                joker_count += 1;
-                continue;
-            }
             if let Some(entry) = result.iter_mut().find(|x| x.card == *card) {
                 entry.count += 1;
             } else {
@@ -147,10 +142,6 @@ impl CardEntry {
             }
         }
         result.sort();
-        if result.len() == 0 {
-            result.push(CardEntry::new(Card::CJ, 0));
-        }
-        result[0].count += joker_count;
         result
     }
 }
@@ -176,24 +167,17 @@ impl Ord for Hand {
             return cmp::Ordering::Less;
         } else {
             if self.cards.len() == 1 {
-                for i in 0..5 {
-                    if self.card_vector[i] != other.card_vector[i] {
-                        return self.card_vector[i].cmp(&other.card_vector[i]);
-                    }
-                }
-                return cmp::Ordering::Equal;
+                return self.card_vector[0].cmp(&other.card_vector[0]);
             } else if self.cards[1].count > other.cards[1].count {
                 return cmp::Ordering::Greater;
             } else if self.cards[1].count < other.cards[1].count {
                 return cmp::Ordering::Less;
             } else {
                 for i in 0..5 {
-                    // let element_comparision = self.card_vector[i].cmp(&other.card_vector[i]);
-                    if self.card_vector[i] as u8 != other.card_vector[i] as u8 {
+                    if self.card_vector[i].cmp(&other.card_vector[i]) != cmp::Ordering::Equal {
                         return self.card_vector[i].cmp(&other.card_vector[i]);
                     }
                 }
-                println!("found some duplicates!");
                 return cmp::Ordering::Equal;
             }
         }
@@ -235,7 +219,7 @@ impl Display for CardCollection {
 
 impl Display for Hand {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Cards: {:?} ({}) Bid: {:0>3}", self.card_vector, self.cards, self.bid).expect("Failed to write Hand");
+        write!(f, "Cards: {:?} Bid: {:0>3}", self.card_vector, self.bid).expect("Failed to write Hand");
         Ok(())
     }
 }
