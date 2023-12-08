@@ -3,6 +3,34 @@ use std::fs;
 use regex::Regex;
 use std::collections::HashMap;
 
+fn get_path_length<T>(instructions: &str, start_node: String, nodes: &HashMap<String, (String, String)>, end_condition: T) -> usize 
+where T: Fn(&String) -> bool {
+    let mut i = 0;
+    let mut current_node = &start_node;
+    while !end_condition(current_node) {
+        let direction = instructions.chars().nth(i % instructions.len()).unwrap();
+        let (left, right) = nodes.get(current_node).unwrap();
+        if direction == 'R' {
+            current_node = right;
+        } else {
+            current_node = left;
+        }
+        i += 1;
+    }
+    i
+}
+
+fn gcd(x: usize, y: usize) -> usize {
+    if y == 0 {
+        x
+    } else {
+        gcd(y, x % y)
+    }
+}
+
+fn lcd(x: usize, y: usize) -> usize {
+    (x*y)/gcd(x, y)
+}
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -29,38 +57,13 @@ fn main() {
         nodes.insert(key, (left, right));
     }
 
-    let mut i1 = 0;
-    let mut current_node = "AAA";
-    while current_node != "ZZZ" {
-        let direction = instructions.chars().nth(i1 % instructions.len()).unwrap();
-        let (left, right) = nodes.get(current_node).unwrap();
-        if direction == 'R' {
-            current_node = right;
-        } else {
-            current_node = left;
-        }
-        i1 += 1;
+    let i1 = get_path_length(instructions, "AAA".to_string(), &nodes, |node| node == "ZZZ");
+    let start_nodes = nodes.keys().filter(|node| node.chars().nth(node.len()-1).unwrap() == 'A').map(|node| node).collect::<Vec<&String>>();
+    let distances = start_nodes.iter().map(|node| get_path_length(instructions, node.to_string(), &nodes, |node| node.chars().nth(node.len()-1).unwrap() == 'Z')).collect::<Vec<usize>>();
+    let mut i2 = 1;
+    for distance in &distances {
+        i2 = lcd(i2, *distance);
     }
 
-    let mut i2 = 0;
-    let mut current_nodes = nodes.keys().filter(|node| node.chars().nth(node.len()-1).unwrap() == 'A').map(|node| node).collect::<Vec<&String>>();
-    println!("starting at {} nodes that end with an A", current_nodes.len());
-    let mut should_continue = true;
-    while should_continue {
-        let direction = instructions.chars().nth(i2 % instructions.len()).unwrap();
-        let new_nodes = current_nodes.iter().map(|node| 
-            if direction == 'R' { &nodes.get(*node).unwrap().1 }
-            else { &nodes.get(*node).unwrap().0 }).collect::<Vec<&String>>();
-        current_nodes = new_nodes;
-
-        should_continue = false;
-        for node in &current_nodes {
-            if node.chars().nth(node.len()-1).unwrap() != 'Z' {
-                should_continue = true;
-                break;
-            }
-        }
-        i2 += 1;
-    }
-    println!("Took {} steps for part one, {} for part two", i1, i2);
+    println!("Took {} steps for part one, {:?} -> {} for part two", i1, distances, i2);
 }
