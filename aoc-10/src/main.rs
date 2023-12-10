@@ -74,7 +74,74 @@ impl Node<'_> {
             connector: &connector,
         }
     }
+}
 
+struct Stretch {
+    min_x: usize,
+    max_x: usize,
+    has_north: bool,
+    has_south: bool
+}
+
+fn find_stretch(visited_nodes: &mut Vec<&Node>, y: isize) -> Stretch {
+    let mut result = Stretch {
+        min_x: usize::MAX,
+        max_x: usize::MIN,
+        has_north: false,
+        has_south: false
+    };
+    let min_x = visited_nodes.iter().filter(|node| node.position.1 == y).map(|node| node.position.0).min().unwrap();
+    let mut node = visited_nodes.iter().find(|node| node.position.1 == y && node.position.0 == min_x).unwrap();
+    result.min_x = min_x as usize;
+    result.has_north |= node.connector.directions[Direction::North.index()];
+    result.has_south |= node.connector.directions[Direction::South.index()];
+    let mut max_x = min_x;
+    while node.connector.directions[Direction::East.index()] {
+        max_x += 1;
+        node = visited_nodes.iter().find(|new_node| new_node.position.1 == y && new_node.position.0 == max_x).unwrap();
+        result.has_north |= node.connector.directions[Direction::North.index()];
+        result.has_south |= node.connector.directions[Direction::South.index()];
+    }
+    result.max_x = max_x as usize;
+    for x in result.min_x..result.max_x + 1 {
+        visited_nodes.remove(visited_nodes.iter().position(|node| node.position.1 == y && node.position.0 == x as isize).unwrap());
+    }
+    result
+}
+
+fn find_range(visited_nodes: &mut Vec<&Node>, y: isize) -> (usize, usize) {
+    let first_stretch = find_stretch(visited_nodes, y);
+    if first_stretch.has_north != first_stretch.has_south {
+        return (first_stretch.min_x, first_stretch.max_x + 1);
+    }
+    let start = first_stretch.min_x;
+    let mut stretch = find_stretch(visited_nodes, y);
+    while !(stretch.has_north && stretch.has_south) {
+        stretch = find_stretch(visited_nodes, y);
+    }
+    return (start, stretch.max_x + 1);
+}
+
+fn find_enclosed_area(visited_nodes: &mut Vec<&Node>, input: &Vec<String>) -> usize {
+    let mut result = 0;
+    let original_nodes = visited_nodes.clone();
+    loop {
+        if visited_nodes.is_empty() {
+            return result;
+        }
+        let min_y = visited_nodes.iter().map(|node| node.position.1).min().unwrap();
+        let (min_x, max_x) = find_range(visited_nodes, min_y);
+        let text = input[min_y as usize].chars().collect::<Vec<char>>()[min_x..max_x].iter().collect::<String>();
+        if text.contains('.') {
+            println!("line {}, {} -> {}: \"{}\"", min_y, min_x, max_x, text);
+        }
+
+        for x in min_x..max_x {
+            if original_nodes.iter().find(|node| node.position.1 == min_y && node.position.0 == x as isize).is_none() {
+                result += 1;
+            }
+        }
+    }
 }
 
 fn main() {
@@ -87,7 +154,7 @@ fn main() {
         panic!("Could not read file {file_path}");
     }).lines().map(String::from).filter(|line| !line.is_empty()).collect();
 
-    static mut nodes: Vec<Node> = Vec::new();
+    static mut NODES: Vec<Node> = Vec::new();
     for y in 0..lines.len() {
         for x in 0..lines[y].len() {
             let character = lines[y].chars().nth(x).unwrap();
@@ -95,7 +162,7 @@ fn main() {
                 continue;
             }
             unsafe {
-                nodes.push(Node::new((x as isize, y as isize), character));
+                NODES.push(Node::new((x as isize, y as isize), character));
             }
         }
     }
@@ -104,13 +171,14 @@ fn main() {
             CONNECTORS[0].directions = CONNECTORS[i].directions;
             println!("checking with S as {}", CONNECTORS[i].symbol);
             let mut already_visited: Vec<&Node> = Vec::new();
-            let start_node = nodes.iter().find(|node| node.connector.symbol == 'S').unwrap();
+            let start_node = NODES.iter().find(|node| node.connector.symbol == 'S').unwrap();
             let mut node = start_node;
             let mut previous_direction = &DIRECTIONS[0];
             let mut length = 1;
             loop {
                 if already_visited.contains(&node) {
-                    println!("Found a loop after {} steps (already visited) => half length: {}", length, length / 2);
+                    println!("Found a loop after {} steps (already visited) => half length: {}, enclosed area: {}", length, length / 2,
+                             find_enclosed_area(&mut already_visited, &lines));
                     break;
                 }
                 already_visited.push(node);
@@ -119,7 +187,7 @@ fn main() {
                     DIRECTIONS[*direction_index] != *previous_direction).unwrap();
                 let next_direction = &DIRECTIONS[next_direction_index];
                 let next_node_position = next_direction.offset(node.position);
-                let next_node = nodes.iter().find(|node| node.position == next_node_position);
+                let next_node = NODES.iter().find(|node| node.position == next_node_position);
                 if next_node.is_none() {
                     println!("Ran into a dead end after {} steps (no node)", length);
                     break;
