@@ -1,6 +1,5 @@
 use std::env;
 use std::fs;
-use regex::Regex;
 
 #[derive(Eq, PartialEq, Debug)]
 enum Direction {
@@ -53,7 +52,6 @@ struct ConnectorType {
 struct Node<'a> {
     position: (isize, isize),
     connector: &'a ConnectorType,
-    connections: [Option<&'a Node<'a>>; 4],
 }
 
 static mut CONNECTORS: [ConnectorType; 8] = [
@@ -74,28 +72,10 @@ impl Node<'_> {
         Node {
             position: position,
             connector: &connector,
-            connections: [None, None, None, None]
         }
     }
 
 }
-
-fn get_new_connections<'a>(nodes: &'a Vec<Node>) -> Vec<[Option<&'static Node<'a>>; 4]> {
-    let mut new_connections: Vec<[Option<&'static Node<'a>>; 4]> = Vec::new();
-    for node in nodes {
-        new_connections.push([None, None, None, None]);
-        for direction_index in 0..4 {
-            if !node.connector.directions[direction_index] {
-                continue;
-            }
-            let direction = &DIRECTIONS[direction_index];
-            let other = nodes.iter().find(|node| node.position == direction.offset(node.position));
-            new_connections.last_mut().unwrap()[direction_index] = other;
-        }
-    }
-    new_connections
-}
-
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -123,17 +103,12 @@ fn main() {
         for i in 2..8 {
             CONNECTORS[0].directions = CONNECTORS[i].directions;
             println!("checking with S as {}", CONNECTORS[i].symbol);
-            //let new_connections = get_new_connections(&nodes);
-            //for i in 0..nodes.len() {
-                // nodes[i].connections.clone_from(&new_connections[i]);
-            // }
             let mut already_visited: Vec<&Node> = Vec::new();
             let start_node = nodes.iter().find(|node| node.connector.symbol == 'S').unwrap();
             let mut node = start_node;
             let mut previous_direction = &DIRECTIONS[0];
             let mut length = 1;
             loop {
-                // println!("position: {}, {}", node.position.0, node.position.1);
                 if already_visited.contains(&node) {
                     println!("Found a loop after {} steps (already visited) => half length: {}", length, length / 2);
                     break;
@@ -143,7 +118,6 @@ fn main() {
                     node.connector.directions[*direction_index] &&
                     DIRECTIONS[*direction_index] != *previous_direction).unwrap();
                 let next_direction = &DIRECTIONS[next_direction_index];
-                // println!("next direction: {:?}, next node position: {:?}", next_direction, next_direction.offset(node.position));
                 let next_node_position = next_direction.offset(node.position);
                 let next_node = nodes.iter().find(|node| node.position == next_node_position);
                 if next_node.is_none() {
