@@ -33,14 +33,18 @@ fn main() {
         result
     });
     let derivatives = histories.map(compute_derivatives).collect::<Vec<Vec<Vec<isize>>>>();
-    let mut sum = 0;
+    let mut sum_forward = 0;
+    let mut sum_backwards = 0;
     for value in derivatives {
-        let mut next_derivative = 0;
+        let mut forward_derivative = 0;
+        let mut backward_derivative = 0;
         for i in (0..value.len()).rev() {
-            next_derivative = value[i][value[i].len() - 1] + next_derivative;
+            forward_derivative = value[i][value[i].len() - 1] + forward_derivative;
+            backward_derivative = value[i][0] - backward_derivative;
         }
-        sum += next_derivative;
-        println!("next value: {}", next_derivative);
+        sum_forward += forward_derivative;
+        sum_backwards += backward_derivative;
+        println!("before first: {}, next value: {}", backward_derivative, forward_derivative);
     }
-    println!("sum: {}", sum);
+    println!("sum forward: {}, sum backwards: {}", sum_forward, sum_backwards);
 }
