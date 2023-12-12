@@ -6,4 +6,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+cached = "0.46.1"
+num-integer = "0.1.45"
 regex = "1.10.2"
