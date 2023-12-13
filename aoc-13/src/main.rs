@@ -1,7 +1,8 @@
 use std::env;
 use std::fs;
+use std::collections::HashSet;
 
-fn get_symmetry(pattern: &Vec<String>) -> usize {
+fn get_symmetry(pattern: &Vec<String>, avoid_return: usize) -> usize {
     for test_symmetry_position in 1..pattern.len() {
         let range = if test_symmetry_position <= pattern.len() / 2 {
             0..test_symmetry_position
@@ -15,7 +16,7 @@ fn get_symmetry(pattern: &Vec<String>) -> usize {
                 break;
             }
         }
-        if is_y_symmetric {
+        if is_y_symmetric && test_symmetry_position * 100 != avoid_return {
             return test_symmetry_position * 100;
         }
     }
@@ -37,12 +38,22 @@ fn get_symmetry(pattern: &Vec<String>) -> usize {
                 break;
             }
         }
-        if is_x_symmetric {
+        if is_x_symmetric && test_symmetry_position != avoid_return {
             return test_symmetry_position;
         }
     }
-    println!("Failed to find symmetry in {:?}", pattern);
+    // println!("Failed to find symmetry in {:?}", pattern);
     return 0;
+}
+
+fn smudge(original: String, position: usize) -> String {
+    let mut smudged = original.clone();
+    if original.chars().nth(position).unwrap() == '.' {
+        smudged.replace_range(position..position+1, "#");
+    } else {
+        smudged.replace_range(position..position+1, ".");
+    }
+    return smudged;
 }
 
 fn main() {
@@ -71,9 +82,30 @@ fn main() {
         patterns.push(current_pattern);
     }
     let mut normal_sum = 0;
+    let mut smudged_sum = 0;
     for pattern in patterns {
         // check for symmetry in y-direction
-        normal_sum += get_symmetry(&pattern);
+        let normal_symmetry = get_symmetry(&pattern, 0);
+        normal_sum += normal_symmetry;
+        let mut smudged_solutions = HashSet::<usize>::new();
+        for y in 0..pattern.len() {
+            for x in 0..pattern[y].len() {
+                let mut smudged_pattern = pattern.clone();
+                smudged_pattern[y] = smudge(pattern[y].clone(), x);
+                let symmetry = get_symmetry(&smudged_pattern, normal_symmetry);
+                if symmetry != 0 && symmetry != normal_symmetry {
+                    smudged_solutions.insert(symmetry);
+                }
+            }
+        }
+        if smudged_solutions.is_empty() {
+            panic!("no smudged solutions for {pattern:?}");
+        } else if smudged_solutions.len() == 1 {
+            println!("one smudged solution for {pattern:?}: {smudged_solutions:?}");
+            smudged_sum += smudged_solutions.iter().next().unwrap();
+        } else {
+            panic!("multiple smudged solutions for {pattern:?}: {smudged_solutions:?}");
+        }
     }
-    println!("Sum: {normal_sum}");
+    println!("Sum: {normal_sum}, smudged sum: {smudged_sum}");
 }
