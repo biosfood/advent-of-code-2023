@@ -117,5 +117,14 @@ fn main() {
 
     let field: Vec<Vec<Tile>> = lines.iter().map(|line| line.chars().map(Tile::from).collect()).collect();
     let part_one = get_energized_tiles(&field, (0, 0, Direction::East));
-    println!("Part 1: {part_one}");
+    let mut part_two = part_one;
+    for x in 0..field[0].len() {
+        part_two = part_two.max(get_energized_tiles(&field, (x as isize, 0, Direction::South)));
+        part_two = part_two.max(get_energized_tiles(&field, (x as isize, field.len() as isize - 1, Direction::North)));
+    }
+    for y in 0..field.len() {
+        part_two = part_two.max(get_energized_tiles(&field, (0, y as isize, Direction::East)));
+        part_two = part_two.max(get_energized_tiles(&field, (field[0].len() as isize - 1, y as isize, Direction::West)));
+    }
+    println!("Part 1: {part_one}, Part 2: {part_two}");
 }
