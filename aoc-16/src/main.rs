@@ -79,23 +79,11 @@ fn get_next_directions(tile: &Tile, direction: Direction) -> Vec<Direction> {
     }
 }
 
-fn main() {
-    let args: Vec<String> = env::args().collect();
-    assert_eq!(args.len(), 2, "Expected exactly one argument");
-    let file_path = &args[1];
-    println!("Reading file {file_path}");
-
-    let lines: Vec<String> = fs::read_to_string(file_path).unwrap_or_else(|_| {
-        panic!("Could not read file {file_path}");
-    }).lines().map(String::from).filter(|line| !line.is_empty()).collect();
-
-    let field: Vec<Vec<Tile>> = lines.iter().map(|line| line.chars().map(Tile::from).collect()).collect();
-
-    let mut current_beams = vec![(0, 0, Direction::East)];
+fn get_energized_tiles(field: &Vec<Vec<Tile>>, start: (isize, isize, Direction)) -> usize {
+    let mut current_beams = vec![start];
     let mut visited_positions: HashSet<(isize, isize)> = HashSet::new();
     let mut past_beams: HashSet<(isize, isize, Direction)> = HashSet::new();
     while !current_beams.is_empty() {
-        println!("{current_beams:?}");
         let mut next_beams = Vec::<(isize, isize, Direction)>::new();
         for beam in current_beams {
             if past_beams.contains(&beam) {
@@ -111,11 +99,23 @@ fn main() {
                 }
                 next_beams.push((next_x, next_y, direction));
             }
-            let (next_x, next_y) = direction.offset((x, y));
-            let tile = &field[y as usize][x as usize];
         }
         current_beams = next_beams;
     }
-    let position_count = visited_positions.len();
-    println!("Part 1: {position_count}");
+    visited_positions.len()
+}
+
+fn main() {
+    let args: Vec<String> = env::args().collect();
+    assert_eq!(args.len(), 2, "Expected exactly one argument");
+    let file_path = &args[1];
+    println!("Reading file {file_path}");
+
+    let lines: Vec<String> = fs::read_to_string(file_path).unwrap_or_else(|_| {
+        panic!("Could not read file {file_path}");
+    }).lines().map(String::from).filter(|line| !line.is_empty()).collect();
+
+    let field: Vec<Vec<Tile>> = lines.iter().map(|line| line.chars().map(Tile::from).collect()).collect();
+    let part_one = get_energized_tiles(&field, (0, 0, Direction::East));
+    println!("Part 1: {part_one}");
 }
