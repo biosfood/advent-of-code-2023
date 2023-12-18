@@ -2,6 +2,7 @@ use std::env;
 use std::fs;
 use regex::Regex;
 use std::collections::HashSet;
+use std::collections::HashMap;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 enum Direction {
@@ -10,6 +11,8 @@ enum Direction {
     South,
     West,
 }
+
+const DIRECTIONS: [Direction; 4] = [ Direction::East, Direction::South, Direction::West, Direction:: North ];
 
 impl Direction {
     fn from(c: char) -> Self {
@@ -44,7 +47,7 @@ impl Direction {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 struct Instruction {
     direction: Direction,
-    steps: usize,
+    steps: isize,
     color: usize,
 }
 
@@ -53,10 +56,69 @@ impl Instruction {
         let reg = Regex::new(r"(?<direction>\w) (?<steps>\d+) \(#(?<color>.+)\)").unwrap();
         let result = reg.captures(s).unwrap();
         let direction = Direction::from(result.get(1).unwrap().as_str().chars().next().unwrap());
-        let steps = result.get(2).unwrap().as_str().parse::<usize>().unwrap();
+        let steps = result.get(2).unwrap().as_str().parse::<isize>().unwrap();
         let color = i64::from_str_radix(result.get(3).unwrap().as_str(), 16).unwrap() as usize;
         Instruction { direction, steps, color }
     }
+}
+
+fn get_flooded_area(instructions: &Vec<Instruction>) -> isize {
+    let mut outline: Vec<(isize, isize, isize, Direction)> = Vec::new();
+    let mut position = (0_isize, 0_isize);
+    let mut visited_count = 0;
+    let mut outline_size = 0;
+    let mut shoelace_area = 0;
+    let mut shoelace_position = (0_isize, 0_isize);
+    for instruction in instructions {
+        if instruction.direction == Direction::North {
+            outline.push((position.1 - instruction.steps, position.1, position.0, instruction.direction));
+        } else if instruction.direction == Direction::South {
+            outline.push((position.1, position.1 + instruction.steps, position.0, instruction.direction));
+        }
+        for _ in 0..instruction.steps {
+            position = instruction.direction.offset(position);
+            outline_size += 1;
+        }
+        shoelace_area += shoelace_position.0 * position.1 - shoelace_position.1 * position.0;
+        shoelace_position = position;
+    }
+    println!("shoelace area: {}", (shoelace_area+1)/2 + outline_size / 2 + 1);
+    println!("outline size: {}", outline_size);
+    outline.sort_by(|(_, _, x_1, _), (_, _, x_2, _)| x_1.partial_cmp(x_2).unwrap());
+    let min_y = outline.iter().map(|(y_start, y_end, x, direction)| *y_start).min().unwrap() - 10;
+    let max_y = outline.iter().map(|(y_start, y_end, x, direction)| *y_end).max().unwrap() + 10;
+    let mut cache: HashMap<Vec<(isize, isize, isize, Direction)>, isize> = HashMap::new();
+    println!("y range: {} .. {}", min_y, max_y);
+    for y in min_y..max_y {
+        let mut relevant_ranges = outline.iter().filter(|(y_start, y_end, x, direction)| y >= *y_start && y <= *y_end).map(|x| *x).collect::<Vec<(isize, isize, isize, Direction)>>();
+        if let Some(result) = cache.get(&relevant_ranges) {
+            visited_count += *result;
+            continue;
+        }
+        let relevant_ranges_insert = relevant_ranges.clone();
+        let mut row_sum = 0;
+        while relevant_ranges.len() > 0 {
+            if relevant_ranges[0].3 == relevant_ranges[1].3 {
+                row_sum += relevant_ranges[1].2 - relevant_ranges[0].2;
+                relevant_ranges.remove(0);
+                continue;
+            }
+            row_sum += relevant_ranges[1].2 - relevant_ranges[0].2 + 1;
+            if relevant_ranges.len() > 2 && relevant_ranges[1].3 == relevant_ranges[2].3 {
+                row_sum += relevant_ranges[2].2 - relevant_ranges[1].2;
+                relevant_ranges.remove(0);
+                relevant_ranges.remove(0);
+                relevant_ranges.remove(0);
+            } else {
+                relevant_ranges.remove(0);
+                relevant_ranges.remove(0);
+            }
+        }
+        cache.insert(relevant_ranges_insert, row_sum);
+        visited_count += row_sum;
+        // println!("relevant: {:?}", relevant_ranges);
+    }
+    visited_count
 }
 
 fn main() {
@@ -70,41 +132,13 @@ fn main() {
     }).lines().map(String::from).filter(|line| !line.is_empty()).collect();
 
     let instructions = lines.iter().map(Instruction::new).collect::<Vec<Instruction>>();
-    let mut outline: Vec<(isize, isize, Instruction)> = Vec::new();
-    let mut position = (0, 0);
-    for instruction in &instructions {
-        outline.push((position.0, position.1, *instruction));
-        for _ in 0..instruction.steps {
-            position = instruction.direction.offset(position);
-            outline.push((position.0, position.1, *instruction));
-        }
-    }
-    let mut vertical_outlines = outline.iter().filter(|(_, _, instruction)| instruction.direction == Direction::North || instruction.direction == Direction::South).collect::<Vec<_>>();
-    let mut visited = HashSet::<(isize, isize)>::new();
-    while !vertical_outlines.is_empty() {
-        println!("vertical outlines: {}", vertical_outlines.len());
-        let y = vertical_outlines.iter().map(|(_, y, _)| *y).min().unwrap();
-        let mut state = false;
-        let mut x = vertical_outlines.iter().filter(|(_, outline_y, _)| *outline_y == y).map(|(x, _, _)| *x).min().unwrap();
-        let mut direction = Direction::East;
-        let mut toggle = false;
-        while vertical_outlines.iter().find(|(_, o_y, _)|  *o_y == y).is_some() {
-            if let Some(outline) = vertical_outlines.iter().find(|(o_x, o_y, _o_d)| *o_x == x && *o_y == y) {
-                if outline.2.direction != direction {
-                    toggle = !toggle;
-                    direction = outline.2.direction
-                }
-                vertical_outlines.retain(|(v_x, v_y, _v_d)| !(*v_x == x && *v_y == y));
-            } else if toggle {
-                visited.insert((x, y));
-            }
-            x += 1;
-        }
-    }
-    for (x, y, d) in outline {
-        visited.insert((x, y));
-    }
-    // println!("Outline: {:?}", outline);
-    // println!("end position: {:?}", position);
-    println!("Visited: {:?}", visited.len());
+    println!("Part one: {}", get_flooded_area(&instructions));
+    let instructions = instructions.iter().map(|instruction| Instruction {
+        color: 0,
+        steps: (instruction.color / 16) as isize,
+        direction: DIRECTIONS[instruction.color % 16]
+    }).collect::<Vec<Instruction>>();
+    // println!("new instruction: {:?}", instructions);
+    println!("Part two: {}", get_flooded_area(&instructions));
+    
 }
