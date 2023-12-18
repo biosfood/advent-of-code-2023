@@ -21,60 +21,9 @@ impl Direction {
             Direction::Right => (x + 1, y),
         }
     }
-
-    fn opposite(&self) -> &Direction {
-        match self {
-            Direction::Up => &Direction::Down,
-            Direction::Down => &Direction::Up,
-            Direction::Left => &Direction::Right,
-            Direction::Right => &Direction::Left,
-        }
-    }
 }
 
 const DIRECTIONS: [Direction; 4] = [Direction::Up, Direction::Down, Direction::Left, Direction::Right];
-
-fn find_best_path(field: &Vec<Vec<usize>>, buffer: &mut HashMap<(usize, usize, Direction), usize>, start: (usize, usize, Direction), visited: &mut HashSet<(usize, usize)>) -> usize {
-    if visited.contains(&(start.0, start.1)) {
-        return 1000000000;
-    }
-    if let Some(result) = buffer.get(&(start.0, start.1, start.2)) {
-        return *result;
-    }
-    if start.0 == field[0].len() - 1 && start.1 == field.len() - 1 {
-        return 0;
-    }
-    let mut result = usize::MAX;
-    visited.insert((start.0, start.1));
-    let mut result_data = "".to_string();
-    for direction in DIRECTIONS {
-        if direction == start.2 || direction == *start.2.opposite() {
-            continue;
-        }
-        let mut position = (start.0 as isize, start.1 as isize);
-        let mut total_cost = 0;
-        let mut visited_cloned = visited.clone();
-        for dist in 0..3 {
-            position = direction.offset(position);
-            if position.0 < 0 || position.1 < 0 || position.0 >= field[0].len() as isize || position.1 >= field.len() as isize {
-                break;
-            }
-            total_cost += field[position.1 as usize][position.0 as usize];
-            let value = total_cost + find_best_path(field, buffer, (position.0 as usize, position.1 as usize, direction),&mut visited_cloned);
-            result = result.min(value);
-            if result == value {
-                result_data = format!("({}, {}: {} {:?}): {}: {}", position.0, position.1, dist + 1 , direction, total_cost, value);
-            }
-            visited_cloned.insert((position.0 as usize, position.1 as usize));
-        }
-    }
-    buffer.insert((start.0, start.1, start.2), result);
-    buffer.insert((start.0, start.1, *start.2.opposite()), result);
-    if result < 1000000000 {
-        // println!("best path: ({}, {}) -> {}", start.0, start.1, result_data);
-    }
-    result
-}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 enum Dir {
@@ -83,13 +32,6 @@ enum Dir {
 }
 
 impl Dir {
-    fn opposite(&self) -> &Dir {
-        match self {
-            Dir::Horizontal => &Dir::Vertical,
-            Dir::Vertical => &Dir::Horizontal,
-        }
-    }
-
     fn compatible(&self, other: &Direction) -> bool {
         match self {
             Dir::Horizontal => {
@@ -117,10 +59,9 @@ impl Dir {
 
 const DIR: [Dir; 2] = [Dir::Horizontal, Dir::Vertical];
 
-fn find_best_path_alternative(field: &Vec<Vec<usize>>) -> usize {
+fn find_best_path(field: &Vec<Vec<usize>>) -> usize {
     let mut Q = Vec::<(usize, usize, Dir)>::new();
     let mut distances = HashMap::<(usize, usize, Dir), usize>::new();
-    let mut previous = HashMap::<(usize, usize, Dir), (usize, usize, Dir)>::new();
     for y in 0..field.len() {
         for x in 0..field[y].len() {
             for d in DIR {
@@ -134,7 +75,7 @@ fn find_best_path_alternative(field: &Vec<Vec<usize>>) -> usize {
     }
     let mut done = HashSet::<(usize, usize, Dir)>::new();
     while !Q.is_empty() {
-        println!("step: {}", Q.len());
+        // println!("step: {}", Q.len());
         let min_distance = Q.iter().map(|v| distances[v]).min().unwrap();
         let u = Q.iter().find(|x| distances[x] == min_distance).unwrap().clone();
         Q.retain(|x| *x != u);
@@ -162,7 +103,6 @@ fn find_best_path_alternative(field: &Vec<Vec<usize>>) -> usize {
                 let new_d = Dir::from(&direction);
                 if alt < distances[&(position.0 as usize, position.1 as usize, new_d)] {
                     distances.insert((position.0 as usize, position.1 as usize, new_d), alt);
-                    // previous.insert((position.0 as usize, position.1 as usize, new_d), (x, y, d));
                 }
                 Q.push((position.0 as usize, position.1 as usize, new_d));
             }
@@ -172,7 +112,7 @@ fn find_best_path_alternative(field: &Vec<Vec<usize>>) -> usize {
 }
 
 fn run(field: &Vec<Vec<usize>>) {
-    println!("cheapest path: {}", find_best_path_alternative(field));
+    println!("cheapest path: {}", find_best_path(field));
 }
 
 fn main() {
