@@ -59,7 +59,7 @@ impl Dir {
 
 const DIR: [Dir; 2] = [Dir::Horizontal, Dir::Vertical];
 
-fn find_best_path(field: &Vec<Vec<usize>>) -> usize {
+fn find_best_path(field: &Vec<Vec<usize>>, part2: bool) -> usize {
     let mut Q = Vec::<(usize, usize, Dir)>::new();
     let mut distances = HashMap::<(usize, usize, Dir), usize>::new();
     for y in 0..field.len() {
@@ -93,12 +93,18 @@ fn find_best_path(field: &Vec<Vec<usize>>) -> usize {
             }
             let mut position = (x as isize, y as isize);
             let mut total_cost = 0;
-            for dist in 0..3 {
+            for dist in 0..10 {
                 position = direction.offset(position);
                 if position.0 < 0 || position.1 < 0 || position.0 >= field[0].len() as isize || position.1 >= field.len() as isize {
                     break;
                 }
                 total_cost += field[position.1 as usize][position.0 as usize];
+                if !part2 && dist >= 3 {
+                    break;
+                }
+                if part2 && dist < 3 {
+                    continue;
+                }
                 let alt = min_distance + total_cost;
                 let new_d = Dir::from(&direction);
                 if alt < distances[&(position.0 as usize, position.1 as usize, new_d)] {
@@ -112,7 +118,8 @@ fn find_best_path(field: &Vec<Vec<usize>>) -> usize {
 }
 
 fn run(field: &Vec<Vec<usize>>) {
-    println!("cheapest path: {}", find_best_path(field));
+    println!("cheapest path: {}", find_best_path(field, false));
+    println!("cheapest path for part 2: {}", find_best_path(field, true));
 }
 
 fn main() {
