@@ -87,5 +87,25 @@ fn main() {
         }
         active_positions = next_positions.iter().map(|pos| *pos).collect::<Vec<_>>();
     }
-    println!("Active positions: {}", active_positions.len());
+    let mut active_positions = tiles.iter().filter(|(_, tile)| **tile == Tile::Starting).map(|(pos, _)| *pos).collect::<Vec<_>>();
+    let mut history = Vec::<usize>::new();
+    for i in 0..500 {
+        history.push(active_positions.len());
+        let mut next_positions = HashSet::<(isize, isize)>::new();
+        for pos in &active_positions {
+            for direction in &DIRECTIONS {
+                let next_position = direction.offset(*pos);
+                let (x, y) = (next_position.0 % lines[0].len() as isize, next_position.1 % lines.len() as isize);
+                if let Some(tile) = tiles.get(&(x, y)) {
+                    if *tile != Tile::Rock {
+                        next_positions.insert(next_position);
+                    }
+                }
+            }
+        }
+        active_positions = next_positions.iter().map(|pos| *pos).collect::<Vec<_>>();
+        if (i as isize-64) % 220 as isize == 0 as isize {
+            println!("{}: {}", i, active_positions.len());
+        }
+    }
 }
