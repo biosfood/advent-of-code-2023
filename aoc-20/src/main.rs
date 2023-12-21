@@ -123,24 +123,40 @@ impl Module for DefaultModule {
     }
 }
 
-fn get_counts(modules: &mut HashMap<String, Box<dyn Module>>, destinations: &HashMap<String, Vec<String>>) -> (usize, usize) {
+fn get_counts(modules: &mut HashMap<String, Box<dyn Module>>, destinations: &HashMap<String, Vec<String>>, notify: &Vec<String>, i: usize, deps: &mut HashMap<String, usize>) -> (usize, usize) {
     let mut counts = vec![0, 0];
     let mut current_pulses: Vec<(String, String, Pulse)> = vec![("button".to_string(), "broadcaster".to_string(), Pulse::Low)];
     while !current_pulses.is_empty() {
         let (from, to, pulse) = current_pulses.remove(0);
+        if notify.contains(&from) && pulse == Pulse::High {
+            deps.insert(from.clone(), i);
+            println!("{from} -{pulse:?} -> {to} ({i})");
+        }
         if let Some(module) = modules.get_mut(&to) {
-            println!("{from} -{pulse:?} -> {to}");
+            // println!("{from} -{pulse:?} -> {to}");
             if let Some(out_pulse) = module.process(pulse, &from) {
                 for destination in &destinations[&to] {
                     current_pulses.push((to.clone(), destination.clone(), out_pulse));
                 }
             }
         } else {
-            println!("{from} -{pulse:?} -> {to} (DEAD END)");
+            // println!("{from} -{pulse:?} -> {to} (DEAD END)");
         }
         counts[pulse.index()] += 1;
     }
     (counts[0], counts[1])
+}
+
+fn gcd(x: usize, y: usize) -> usize {
+    if y == 0 {
+        x
+    } else {
+        gcd(y, x % y)
+    }
+}
+
+fn lcd(x: usize, y: usize) -> usize {
+    (x*y)/gcd(x, y)
 }
 
 fn main() {
@@ -177,8 +193,6 @@ fn main() {
         let dest = result["destinations"].to_owned();
         destinations.insert(name.clone(), dest.split(", ").map(String::from).collect());
     }
-    println!("modules: {:?}", modules);
-    println!("destination: {:?}", destinations);
 
     for (name, module) in &mut modules {
         for (destination_name, destination_list) in &destinations {
@@ -188,10 +202,40 @@ fn main() {
         }
     }
     let mut counts = vec![0, 0];
-    for _ in 0..1000 {
-        let (a, b) = get_counts(&mut modules, &mut destinations);
+    let mut rx_parent = destinations.iter().find(|(_, dest)| dest.contains(&"rx".to_string())).unwrap().0.clone();
+    let mut rx_parent_dependencies = destinations.iter().filter(|(_, dest)| dest.contains(&rx_parent)).map(|(name, _)| name.clone()).collect::<Vec<String>>();
+    let mut deps: HashMap<String, usize> = HashMap::new();
+    println!("rx parent: {rx_parent}: {rx_parent_dependencies:?}");
+    for i in 0..1000 {
+        let (a, b) = get_counts(&mut modules, &mut destinations, &rx_parent_dependencies, i, &mut deps);
         counts[0] += a;
         counts[1] += b;
     }
-    println!("counts: {:?}: {}", counts, counts[0] * counts[1]);
+    let mut i = 1000;
+    loop {
+        get_counts(&mut modules, &mut destinations, &rx_parent_dependencies, i, &mut deps);
+        i+=1;
+        let mut keep_going = false;
+        for dep in &rx_parent_dependencies {
+            if let Some(i) = deps.get(dep) {
+                if i == &0 {
+                    keep_going = true;
+                }
+            } else {
+                keep_going = true;
+            }
+        }
+        if !keep_going {
+            break;
+        }
+    }
+    let mut i2 = 1;
+    for dep in &rx_parent_dependencies {
+        if let Some(i) = deps.get(dep) {
+            i2 = lcd(i2, *i+1);
+        }
+    }
+    println!("counts: {:?}: {} -> {}", counts, counts[0] * counts[1], i2);
+
+
 }
