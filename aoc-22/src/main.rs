@@ -23,7 +23,7 @@ impl Vector for Position {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 struct Block {
     min: Position,
     max: Position,
@@ -103,6 +103,27 @@ fn is_stable(blocks: &mut Vec<Block>, block_index: usize) -> bool {
     true
 }
 
+fn get_falling_blocks(blocks: &Vec<Block>, block_index: usize) -> usize {
+    let mut new_blocks = blocks.iter().enumerate().filter(|(i, _)| *i != block_index).map(|(_, block)| block.clone()).collect::<Vec<Block>>();
+    fall(&mut new_blocks);
+    let mut displacements = 0;
+    for i in 0..blocks.len() {
+        if i == block_index {
+            continue;
+        }
+        let old_block = blocks[i];
+        let new_block = if i < block_index {
+            new_blocks[i]
+        } else {
+            new_blocks[i-1]
+        };
+        if old_block != new_block {
+            displacements += 1;
+        }
+    }
+    displacements
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     assert_eq!(args.len(), 2, "Expected exactly one argument");
@@ -117,14 +138,16 @@ fn main() {
     fall(&mut blocks);
     println!("blocks: {blocks:?}");
     let mut stable_count = 0;
+    let mut falling_count = 0;
     for i in 0..blocks.len() {
         if is_stable(&mut blocks, i) {
             println!("Block {} is stable", i);
             stable_count += 1;
         } else {
-            println!("Block {} is unstable", i);
+            let displacements = get_falling_blocks(&blocks, i);
+            println!("removing block {} will cause {} blocks to fall", i, displacements);
+            falling_count += displacements;
         }
     }
-    println!("Stable blocks: {}", stable_count);
-    println!("blocks: {blocks:?}");
+    println!("Stable blocks: {}, falling blocks: {}", stable_count, falling_count);
 }
