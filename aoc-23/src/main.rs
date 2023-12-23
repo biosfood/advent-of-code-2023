@@ -47,10 +47,10 @@ const DIRECTIONS: [Direction; 4] = [
     Direction::West
 ];
 
-fn find_longest_path(tiles: &Vec<Vec<Tile>>, position: (isize, isize), visited: &mut HashSet<(isize, isize)>) -> usize {
+fn find_longest_path(tiles: &Vec<Vec<Tile>>, position: (isize, isize), visited: &mut HashSet<(isize, isize)>, disregard_slopes: bool) -> usize {
     let mut distance = 1;
     let mut current_position = position;
-    println!("checking from {position:?}");
+    visited.insert(current_position);
     loop {
         let mut next_positions = Vec::<(isize, isize)>::new();
         for direction in DIRECTIONS {
@@ -62,17 +62,19 @@ fn find_longest_path(tiles: &Vec<Vec<Tile>>, position: (isize, isize), visited: 
                 if *tile == Tile::Forest {
                     continue;
                 }
-                if *tile == Tile::SlopeE && direction != Direction::East {
-                    continue;
-                }
-                if *tile == Tile::SlopeN && direction != Direction::North {
-                    continue;
-                }
-                if *tile == Tile::SlopeW && direction != Direction::West {
-                    continue;
-                }
-                if *tile == Tile::SlopeS && direction != Direction::South {
-                    continue;
+                if !disregard_slopes {
+                    if *tile == Tile::SlopeE && direction != Direction::East {
+                        continue;
+                    }
+                    if *tile == Tile::SlopeN && direction != Direction::North {
+                        continue;
+                    }
+                    if *tile == Tile::SlopeW && direction != Direction::West {
+                        continue;
+                    }
+                    if *tile == Tile::SlopeS && direction != Direction::South {
+                        continue;
+                    }
                 }
             } else {
                 continue;
@@ -81,8 +83,7 @@ fn find_longest_path(tiles: &Vec<Vec<Tile>>, position: (isize, isize), visited: 
         }
         match next_positions.len() {
             0 => {
-                println!("position: {position:?}");
-                return if position.1 >= tiles.len() as isize - 2 {
+                return if current_position.1 >= tiles.len() as isize - 2 {
                     distance + 1000_000
                 } else {
                     distance
@@ -96,7 +97,7 @@ fn find_longest_path(tiles: &Vec<Vec<Tile>>, position: (isize, isize), visited: 
             _ => {
                 let mut max_distance = 0;
                 for pos in next_positions {
-                    max_distance = max_distance.max(find_longest_path(tiles, pos, &mut visited.clone()));
+                    max_distance = max_distance.max(find_longest_path(tiles, pos, &mut visited.clone(), disregard_slopes));
                 }
                 return distance + max_distance;
             }
@@ -116,5 +117,6 @@ fn main() {
 
     let tiles = lines.iter().map(|line| line.chars().map(Tile::from_char).collect::<Vec<_>>()).collect::<Vec<_>>();
     let start_position = (tiles[0].iter().position(|tile| *tile == Tile::Path).unwrap() as isize, 0);
-    println!("Longest path: {}", find_longest_path(&tiles, start_position, &mut HashSet::new()) - 1);
+    println!("Longest path: {}", find_longest_path(&tiles, start_position, &mut HashSet::new(), false) - 1000_001);
+    println!("Longest path part 2: {}", find_longest_path(&tiles, start_position, &mut HashSet::new(), true) - 1000_001);
 }
