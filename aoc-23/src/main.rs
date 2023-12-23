@@ -1,5 +1,6 @@
 use std::env;
 use std::fs;
+use std::iter;
 use std::collections::HashSet;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -105,6 +106,30 @@ fn find_longest_path(tiles: &Vec<Vec<Tile>>, position: (isize, isize), visited: 
     }
 }
 
+fn longest_path(position: usize, visited: &mut HashSet<usize>, adjacencies: &Vec<Vec<usize>>) -> usize {
+    if visited.contains(&position) {
+        return 0;
+    }
+    if position == adjacencies.len() - 1 {
+        return 1000_000;
+    }
+    visited.insert(position);
+    let mut max_distance = 0;
+    let mut max_index = 0;
+    for i in 0..adjacencies.len() {
+        if adjacencies[position][i] == 0 {
+            continue;
+        }
+        let mut visited_cloned = visited.clone();
+        let new = adjacencies[position][i] + longest_path(i, &mut visited_cloned, adjacencies);
+        if new > max_distance {
+            max_index = i;
+            max_distance = max_distance.max(new);
+        }
+    }
+    max_distance
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     assert_eq!(args.len(), 2, "Expected exactly one argument");
@@ -118,5 +143,75 @@ fn main() {
     let tiles = lines.iter().map(|line| line.chars().map(Tile::from_char).collect::<Vec<_>>()).collect::<Vec<_>>();
     let start_position = (tiles[0].iter().position(|tile| *tile == Tile::Path).unwrap() as isize, 0);
     println!("Longest path: {}", find_longest_path(&tiles, start_position, &mut HashSet::new(), false) - 1000_001);
-    println!("Longest path part 2: {}", find_longest_path(&tiles, start_position, &mut HashSet::new(), true) - 1000_001);
+    let mut nodes = Vec::<(isize, isize)>::new();
+    for y in 0..lines.len() {
+        for x in 0..lines[0].len() {
+            if tiles[y][x] == Tile::Forest {
+                continue;
+            }
+            let mut connections = 0;
+            for direction in &DIRECTIONS {
+                let test_position = direction.offset((x as isize, y as isize));
+                if let Some(tile) = tiles.get(test_position.1 as usize).and_then(|row| row.get(test_position.0 as usize)) {
+                    if *tile != Tile::Forest {
+                        connections += 1;
+                    }
+                }
+            }
+            if connections != 2 {
+                nodes.push((x as isize, y as isize));
+            }
+        }
+    }
+    let mut adjacencies = (0..nodes.len()).map(|_| (0..nodes.len()).map(|_| 0).collect::<Vec<_>>()).collect::<Vec<_>>();
+    for i in 0..nodes.len() {
+        let node = &nodes[i];
+        // println!("Going from {:?}", node);
+        for d in &DIRECTIONS {
+            let mut previous = *node;
+            let mut current = d.offset(*node);
+            let mut distance = 1;
+            if let Some(tile) = tiles.get(current.1 as usize).and_then(|row| row.get(current.0 as usize)) {
+                if *tile == Tile::Forest {
+                    continue;
+                }
+            } else {
+                continue;
+            }
+            println!("Going from {:?} in direction {:?}", node, d);
+            loop {
+                if let Some(j) = nodes.iter().position(|n| n.0 == current.0 && n.1 == current.1) {
+                    adjacencies[i][j] = distance;
+                    adjacencies[j][i] = distance;
+                    break;
+                }
+                for direction in &DIRECTIONS {
+                    let next = direction.offset(current);
+                    if next == previous {
+                        continue;
+                    }
+                    if let Some(tile) = tiles.get(next.1 as usize).and_then(|row| row.get(next.0 as usize)) {
+                        if *tile == Tile::Forest {
+                            continue;
+                        }
+                    } else {
+                        continue;
+                    }
+                    previous = current;
+                    current = next;
+                    break;
+                }
+                distance += 1;
+            }
+        }
+    }
+    for i in 0..nodes.len() {
+        for j in 0..nodes.len() {
+            if adjacencies[i][j] != 0 {
+                println!("{:?} -> {:?}: {:?}", nodes[i], nodes[j], adjacencies[i][j]);
+            }
+        }
+    }
+    println!("nodes: {:?}, adjacencies: {:?}", nodes, adjacencies);
+    println!("Longest path part 2: {}", longest_path(0, &mut HashSet::new(), &adjacencies) - 1000_000);
 }
