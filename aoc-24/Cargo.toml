@@ -7,4 +7,3 @@ edition = "2021"
 
 [dependencies]
 f128 = "0.2.9"
-simplers_optimization = "0.4.3"
