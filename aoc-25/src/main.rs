@@ -54,6 +54,7 @@ fn main() {
     let nodes = node_set.iter().map(|node| node.to_string()).collect::<Vec<String>>();
     let mut adjacencies = (0..nodes.len()).map(|_| (0..nodes.len()).map(|_| 0).collect::<Vec<_>>()).collect::<Vec<_>>();
     print!("g:= {{");
+    let mut started = false;
     for line in &lines {
         let mut parts = line.split(": ");
         let from_name = parts.next().unwrap();
@@ -61,24 +62,15 @@ fn main() {
         for to in parts.next().unwrap().split(" ").map(|s| nodes.iter().position(|node| node == s).unwrap()) {
             adjacencies[from][to] = 1;
             adjacencies[to][from] = 1;
-            print!("{from} <-> {to},");
+            if !started {
+                started = true;
+            } else {
+                print!(", ");
+            }
+            print!("{from} <-> {to}");
         }
     }
     println!("}}");
     println!("part := FindMinimumCut[g][[2]]");
     println!("Length[part[[1]]] * Length[part[[2]]]");
-    // let partition = louvain_two_groups(&adjacencies);
-    // println!("Final Partition: {:?}", partition);
-    // let mut group_1 = Vec::<usize>::new();
-    // let mut group_2 = Vec::<usize>::new();
-    // for i in 0..nodes.len() {
-    //     if partition[&i] == 0 {
-    //         group_1.push(i);
-    //     } else {
-    //         group_2.push(i);
-    //     }
-    // }
-    // println!("Group 1: {:?}", group_1);
-    // println!("Group 2: {:?}", group_2);
-    // println!("Part one: {}", group_1.len() * group_2.len())
 }
