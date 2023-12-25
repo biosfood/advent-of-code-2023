@@ -1,41 +1,6 @@
 use std::env;
 use std::fs;
-use std::collections::HashMap;
 use std::collections::HashSet;
-
-fn calculate_modularity(adj_matrix: &Vec<Vec<u32>>, partition: &HashMap<usize, usize>, adj_sums: &Vec<f64>) -> f64 {
-    let num_nodes = adj_matrix.len() as f64;
-    let mut modularity = 0.0;
-    for i in 0..adj_matrix.len() {
-        for j in 0..adj_matrix[i].len() {
-            if i == j || partition[&i] == partition[&j] {
-                modularity += adj_matrix[i][j] as f64 * 2.0 * num_nodes - adj_sums[i] * adj_sums[j];
-            }
-        }
-    }
-    modularity
-}
-
-fn louvain_two_groups(adj_matrix: &Vec<Vec<u32>>) -> HashMap<usize, usize> {
-    let adj_sums = adj_matrix.iter().map(|row| row.iter().sum::<u32>() as f64).collect::<Vec<f64>>();
-    let mut partition: HashMap<usize, usize> = (0..adj_matrix.len()).map(|i| (i, 0)).collect(); // Initialize all nodes to group 0
-    let mut modularity = calculate_modularity(adj_matrix, &partition, &adj_sums);
-
-    for i in 0..adj_matrix.len() {
-        partition.insert(i, 1);
-
-        let new_modularity = calculate_modularity(adj_matrix, &partition, &adj_sums);
-
-        if new_modularity > modularity {
-            modularity = new_modularity;
-        } else {
-            partition.insert(i, 0);
-        }
-        println!("{}: {}", i, modularity);
-    }
-
-    partition
-}
 
 fn main() {
     let args: Vec<String> = env::args().collect();
